@@ -1,4 +1,4 @@
-package curves;
+package oneDimensionalObjects;
 
 public class EllipticCurveYvalue {
 
