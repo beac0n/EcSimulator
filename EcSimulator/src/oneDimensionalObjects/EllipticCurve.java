@@ -35,10 +35,10 @@ public class EllipticCurve {
 
 	public EllipticCurveYvalue getYvalues(double x)
 			throws IllegalArgumentException {
-		
-		double rightOfRoot = a[0] * (-x) - a[1];
-		double rightUnderRoot = Math.pow((a[0] * (-x) - a[1]), 2);
-		double leftUnderRoot = 4 * (a[2] * x * x + a[3] * x + a[4] + x * x * x);
+
+		double rightOfRoot = -(a[0]*x) - a[1];
+		double rightUnderRoot = -4*(-a[2]*x*x-a[3]*x-a[4]-x*x*x);
+		double leftUnderRoot = (a[0]*x+a[1])*(a[0]*x+a[1]);
 		double underRoot = leftUnderRoot + rightUnderRoot;
 
 		if (underRoot < 0) {
@@ -50,7 +50,6 @@ public class EllipticCurve {
 
 		double yNeg = 0.5 * (-root + rightOfRoot);
 		double yPos = 0.5 * (root + rightOfRoot);
-		
 
 		return new EllipticCurveYvalue(yPos, yNeg);
 	}
@@ -136,11 +135,6 @@ public class EllipticCurve {
 	}
 
 	public Point getThirdInterceptionPoint(Point p, Point q) {
-
-		/*
-		 * TODO: this seems to be wrong...
-		 */
-		
 		Line tempLine;
 
 		if (p.equals(q)) {
@@ -151,45 +145,72 @@ public class EllipticCurve {
 
 		double v = tempLine.getSlope();
 
-		double x =  v*v + a[0]*v + a[2] - p.getX() - q.getX();
+		double x = v * v + a[0] * v + a[2] - p.getX() - q.getX(); // TODO: check if this is correct
 		double y = tempLine.getYvalue(x);
 
 		return new Point(x, y);
 	}
-	
-	
+
+	public double getZeroX(double startX) {
+		
+		double x = 0;
+		
+		try {
+			x = startX;
+			double y = getYvalues(startX).getPositiveRoot();			
+
+			double newX = x - (y / getSlopeAt(new Point(x, y)));
+
+			while (newX != x) {
+				x = newX;
+				y = getYvalues(x).getPositiveRoot();
+				newX = x - (y / getSlopeAt(new Point(x, y)));
+			}
+
+		} catch (IllegalArgumentException ex) {
+			return x;
+		}
+
+		return x;
+	}
+
 	private static final BigDecimal SQRT_DIG = new BigDecimal(150);
-	private static final BigDecimal SQRT_PRE = new BigDecimal(10).pow(SQRT_DIG.intValue());
+	private static final BigDecimal SQRT_PRE = new BigDecimal(10).pow(SQRT_DIG
+			.intValue());
 
 	/**
 	 * Private utility method used to compute the square root of a BigDecimal.
 	 * 
-	 * @author Luciano Culacciatti 
-	 * @url http://www.codeproject.com/Tips/257031/Implementing-SqrtRoot-in-BigDecimal
+	 * @author Luciano Culacciatti
+	 * @url http://www.codeproject.com/Tips/257031/Implementing-SqrtRoot-in-
+	 *      BigDecimal
 	 */
-	private static BigDecimal sqrtNewtonRaphson  (BigDecimal c, BigDecimal xn, BigDecimal precision){
-	    BigDecimal fx = xn.pow(2).add(c.negate());
-	    BigDecimal fpx = xn.multiply(new BigDecimal(2));
-	    BigDecimal xn1 = fx.divide(fpx,2*SQRT_DIG.intValue(),RoundingMode.HALF_DOWN);
-	    xn1 = xn.add(xn1.negate());
-	    BigDecimal currentSquare = xn1.pow(2);
-	    BigDecimal currentPrecision = currentSquare.subtract(c);
-	    currentPrecision = currentPrecision.abs();
-	    if (currentPrecision.compareTo(precision) <= -1){
-	        return xn1;
-	    }
-	    return sqrtNewtonRaphson(c, xn1, precision);
+	private static BigDecimal sqrtNewtonRaphson(BigDecimal c, BigDecimal xn,
+			BigDecimal precision) {
+		BigDecimal fx = xn.pow(2).add(c.negate());
+		BigDecimal fpx = xn.multiply(new BigDecimal(2));
+		BigDecimal xn1 = fx.divide(fpx, 2 * SQRT_DIG.intValue(),
+				RoundingMode.HALF_DOWN);
+		xn1 = xn.add(xn1.negate());
+		BigDecimal currentSquare = xn1.pow(2);
+		BigDecimal currentPrecision = currentSquare.subtract(c);
+		currentPrecision = currentPrecision.abs();
+		if (currentPrecision.compareTo(precision) <= -1) {
+			return xn1;
+		}
+		return sqrtNewtonRaphson(c, xn1, precision);
 	}
 
 	/**
 	 * Uses Newton Raphson to compute the square root of a BigDecimal.
 	 * 
-	 * @author Luciano Culacciatti 
-	 * @url http://www.codeproject.com/Tips/257031/Implementing-SqrtRoot-in-BigDecimal
+	 * @author Luciano Culacciatti
+	 * @url http://www.codeproject.com/Tips/257031/Implementing-SqrtRoot-in-
+	 *      BigDecimal
 	 */
-	public static BigDecimal bigSqrt(BigDecimal c){
-	    return sqrtNewtonRaphson(c,new BigDecimal(1),new BigDecimal(1).divide(SQRT_PRE));
+	public static BigDecimal bigSqrt(BigDecimal c) {
+		return sqrtNewtonRaphson(c, new BigDecimal(1),
+				new BigDecimal(1).divide(SQRT_PRE));
 	}
-	
-	
+
 }

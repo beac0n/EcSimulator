@@ -2,8 +2,11 @@ package view;
 
 import static java.awt.Toolkit.getDefaultToolkit;
 
+import java.awt.Color;
+import java.awt.KeyboardFocusManager;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 import javax.swing.JFrame;
@@ -19,39 +22,135 @@ import org.math.plot.Plot2DPanel;
 public class Plotter {
 
 	private EllipticCurve curve;
+	private List<double[][]> pointSets;
+	
 	private JFrame frame;
 	private Plot2DPanel plot;
 	private double xMin;
 	private double xMax;
 	private double steps;
+	
+	private int plotCounter = 0;
 
-	public Plotter(EllipticCurve curve, double xMin, double xMax,
-			double steps) {
+	public Plotter(EllipticCurve curve, double xMin, double xMax, double steps) {
 		this.curve = curve;
 		this.xMin = xMin;
 		this.xMax = xMax;
 		this.steps = steps;
 
-		List<Point> points = generateCurvePoints(curve);
+		initPlot();
 
-		double[] xValues = new double[points.size()];
-		double[] yValues = new double[points.size()];
+		plotEllipticCurve();
+	}
+	
+	public double getXmax() {
+		return xMax;
+	}
+	
+	private double[][] listsToArray(ArrayList<Double> curXvals, ArrayList<Double> curYvals) {
+		if (curXvals.size() > 0) {
+			double[][] currPointSet = new double[curXvals.size()][2];
 
-		for (int i = 0; i < points.size(); ++i) {
-			xValues[i] = points.get(i).getX();
-			yValues[i] = points.get(i).getY();
+			for (int j = 0; j < curXvals.size(); ++j) {
+				currPointSet[j][0] = curXvals.get(j);
+				currPointSet[j][1] = curYvals.get(j);
+			}
+			
+			return currPointSet;
+		}
+		
+		return null;
+	}
+	
+	public void replot(double xMax) {
+		this.xMax = xMax;
+		
+		plot.removeAllPlots();
+		plotEllipticCurve();		
+	}
+
+	private void plotEllipticCurve() {
+		
+		pointSets = new LinkedList<double[][]>();
+		double zeroX;
+
+		ArrayList<Double> curXvals = new ArrayList<Double>();
+		ArrayList<Double> curYvals = new ArrayList<Double>();
+
+		for (double i = xMin; i < xMax; i += steps) {
+			try {
+				EllipticCurveYvalue tempVal = curve.getYvalues(i);
+
+				curXvals.add(i);
+				curYvals.add(tempVal.getPositiveRoot());
+
+			} catch (IllegalArgumentException ex) {
+				if (curXvals.size() > 0) {
+					zeroX = curve.getZeroX(curXvals.get(0));
+					curXvals.add(0, zeroX);
+					curYvals.add(0, 0d);					
+					
+					zeroX = curve.getZeroX(curXvals.get(curXvals.size() - 1));
+					curXvals.add(zeroX);
+					curYvals.add(0d);	
+					
+					
+					pointSets.add(listsToArray(curXvals, curYvals));
+					
+					curXvals = new ArrayList<Double>();
+					curYvals = new ArrayList<Double>();
+				}
+			}
 		}
 
+		zeroX = curve.getZeroX(curXvals.get(0));
+		curXvals.add(0, zeroX);
+		curYvals.add(0, 0d);
+		
+		pointSets.add(listsToArray(curXvals, curYvals));
+		
+		curXvals = new ArrayList<Double>();
+		curYvals = new ArrayList<Double>();
+
+		for (double i = xMax; i > xMin; i -= steps) {
+			try {
+				EllipticCurveYvalue tempVal = curve.getYvalues(i);
+
+				curXvals.add(i);
+				curYvals.add(tempVal.getNegativeRoot());
+
+			} catch (IllegalArgumentException ex) {
+				if (curXvals.size() > 0) {	
+					
+					zeroX = curve.getZeroX(curXvals.get(curXvals.size() - 1));
+					curXvals.add(zeroX);
+					curYvals.add(0d);						
+					
+					pointSets.add(listsToArray(curXvals, curYvals));
+					
+					curXvals = new ArrayList<Double>();
+					curYvals = new ArrayList<Double>();
+				}
+			}
+		}
+		
+		for(int i = 0; i < pointSets.size(); ++i) {
+			plot.addLinePlot(curve.toString(), Color.GRAY, pointSets.get(i));
+		}
+	}
+
+	private void initPlot() {
 		plot = new Plot2DPanel();
 		plot.addLegend("SOUTH");
-		plot.addLinePlot(curve.toString(), xValues, yValues);
-
-		plot.setFocusable(true);
-		plot.requestFocusInWindow();
-
-		plot.addKeyListener(new EllipticCurveKeyListener(plot, curve));  
 
 		frame = new JFrame("Elliptic Curve");
+
+		frame.setFocusable(true);
+		frame.requestFocusInWindow();
+
+		KeyboardFocusManager manager = KeyboardFocusManager
+				.getCurrentKeyboardFocusManager();
+		manager.addKeyEventDispatcher(new EllipticCurveKeyListener(this, curve));
 
 		frame.add(plot);
 		frame.setSize(getDefaultToolkit().getScreenSize());
@@ -59,50 +158,15 @@ public class Plotter {
 		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 	}
 
-	public List<Point> generateCurvePoints(EllipticCurve curve) {
-		// define your data
-		ArrayList<Double> xArr = new ArrayList<Double>();
-		ArrayList<Double> yArr = new ArrayList<Double>();
+	public void plotLine(Color color, Line line) {
 
-		for (double i = xMax; i > xMin; i -= steps) {
-			try {
-				EllipticCurveYvalue tempVal = curve.getYvalues(i);
-
-				xArr.add(i);
-				yArr.add(tempVal.getNegativeRoot());
-
-			} catch (IllegalArgumentException ex) {
+		if (plotCounter > pointSets.size()) {
+			while (plot.getPlots().size() > pointSets.size()) {
+				plot.removePlot(pointSets.size());
 			}
+			plotCounter = 0;
 		}
 
-		for (double i = xMin; i < xMax; i += steps) {
-			try {
-				EllipticCurveYvalue tempVal = curve.getYvalues(i);
-
-				xArr.add(i);
-				yArr.add(tempVal.getPositiveRoot());
-
-			} catch (IllegalArgumentException ex) {
-			}
-		}
-
-		double[] x = new double[xArr.size()];
-		double[] y = new double[yArr.size()];
-
-		for (int i = 0; i < xArr.size(); ++i) {
-			x[i] = xArr.get(i);
-			y[i] = yArr.get(i);
-		}
-
-		List<Point> pointList = new ArrayList<Point>();
-
-		for (int i = 0; i < x.length; ++i) {
-			pointList.add(new Point(x[i], y[i]));
-		}
-		return pointList;
-	}
-
-	public void plotLine(Line line) {
 		ArrayList<Double> xArr = new ArrayList<Double>();
 		ArrayList<Double> yArr = new ArrayList<Double>();
 
@@ -141,9 +205,9 @@ public class Plotter {
 			yArr.add(yTemp);
 		}
 
-		xArr.add(xArr.get(xArr.size()-1));
-		yArr.add(yArr.get(yArr.size()-1));
-		
+		xArr.add(xArr.get(xArr.size() - 1));
+		yArr.add(yArr.get(yArr.size() - 1));
+
 		double[] xValues = new double[xArr.size()];
 		double[] yValues = new double[yArr.size()];
 
@@ -151,7 +215,16 @@ public class Plotter {
 			xValues[i] = xArr.get(i);
 			yValues[i] = yArr.get(i);
 		}
-		
-		plot.addLinePlot(line.toString(), xValues, yValues);
+
+		plot.addLinePlot(line.toString(), color, xValues, yValues);
+		plotCounter++;
+	}
+
+	public void addPoint(String name, Color color, Point p) {
+		double[] x = { p.getX() };
+		double[] y = { p.getY() };
+
+		plot.addScatterPlot(name, color, x, y);
+		plotCounter++;
 	}
 }
