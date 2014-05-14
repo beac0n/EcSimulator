@@ -31,11 +31,9 @@ public class EllipticCurveKeyListener implements KeyEventDispatcher {
 	public boolean dispatchKeyEvent(KeyEvent e) {
 		if (e.getID() == KeyEvent.KEY_RELEASED
 				&& e.getKeyCode() == KeyEvent.VK_ENTER) {
-			
-			System.out.println("now plotting...");
 
-			Point tempPoint = curve.getThirdInterceptionPoint(curve.getStartPoint(), currPoint);
-			tempPoint = new Point(tempPoint.getX(), -tempPoint.getY());
+			Point thirdPointNmir = curve.getThirdInterceptionPoint(curve.getStartPoint(), currPoint);
+			Point thirdPoint = curve.getMirroredPoint(thirdPointNmir);
 
 			Line tempLine;
 			if (curve.getStartPoint().equals(currPoint)) {
@@ -44,17 +42,18 @@ public class EllipticCurveKeyListener implements KeyEventDispatcher {
 				tempLine = new Line(curve.getStartPoint(), currPoint);
 			}
 
-			Line verticalLine = new Line(tempPoint.getX());
+			Line verticalLine = new Line(thirdPoint.getX());
 
-			if (tempPoint.getX() <= oldXmax && currPoint.getX() <= oldXmax) {
-				plot.replot(oldXmax);
-			} else {
-				double xMax = tempPoint.getX();
+			if (thirdPoint.getX() < oldXmax && currPoint.getX() < oldXmax && plot.getXmax() != oldXmax) {
+				plot.replot(oldXmax); // fall back to old bounds
+			} else if(thirdPoint.getX() > plot.getXmax() || currPoint.getX() > plot.getXmax()) {
+				// one of the two new points is outside the bounds
+				double xMax = thirdPoint.getX();
 				if (currPoint.getX() > xMax) {
 					xMax = currPoint.getX();
 				}
-
-				plot.replot(xMax+10);
+				
+				plot.replot(xMax + 10);				
 			}
 
 			plot.plotLine(Color.RED, tempLine);
@@ -62,10 +61,9 @@ public class EllipticCurveKeyListener implements KeyEventDispatcher {
 
 			plot.addPoint("P", Color.BLACK, curve.getStartPoint());
 			plot.addPoint("Q", Color.BLUE, currPoint);
-			plot.addPoint("P + Q", Color.RED, tempPoint);
+			plot.addPoint("P + Q", Color.RED, thirdPoint);
 
-			currPoint = tempPoint;
-			System.out.println("plotting finished");
+			currPoint = thirdPoint;
 		}
 
 		return false;

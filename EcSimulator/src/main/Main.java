@@ -12,13 +12,13 @@ public class Main {
 		double startX = 0;
 		double a0 = 0;
 		double a1 = 0;
-		double a2 = 2;
-		double a3 = 0;
+		double a2 = 0;
+		double a3 = -7;
 		double a4 = 4;
 
 		double minX = -3;
 		double maxX = 10;
-		double steps = 0.0001;
+		double steps = 0.1;
 		
 		if(args.length >= 9) {
 			 startX = Double.parseDouble(args[0]);

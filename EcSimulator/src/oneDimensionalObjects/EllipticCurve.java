@@ -36,9 +36,10 @@ public class EllipticCurve {
 	public EllipticCurveYvalue getYvalues(double x)
 			throws IllegalArgumentException {
 
-		double rightOfRoot = -(a[0]*x) - a[1];
-		double rightUnderRoot = -4*(-a[2]*x*x-a[3]*x-a[4]-x*x*x);
-		double leftUnderRoot = (a[0]*x+a[1])*(a[0]*x+a[1]);
+		double rightOfRoot = -(a[0] * x) - a[1];
+		double rightUnderRoot = -4
+				* (-a[2] * x * x - a[3] * x - a[4] - x * x * x);
+		double leftUnderRoot = (a[0] * x + a[1]) * (a[0] * x + a[1]);
 		double underRoot = leftUnderRoot + rightUnderRoot;
 
 		if (underRoot < 0) {
@@ -145,33 +146,20 @@ public class EllipticCurve {
 
 		double v = tempLine.getSlope();
 
-		double x = v * v + a[0] * v + a[2] - p.getX() - q.getX(); // TODO: check if this is correct
+		double x = -a[2] + v * v + a[0] * v - p.getX() - q.getX();
 		double y = tempLine.getYvalue(x);
 
 		return new Point(x, y);
 	}
 
-	public double getZeroX(double startX) {
-		
-		double x = 0;
-		
-		try {
-			x = startX;
-			double y = getYvalues(startX).getPositiveRoot();			
+	public Point getMirroredPoint(Point point) {
+		EllipticCurveYvalue yVal = getYvalues(point.getX());
 
-			double newX = x - (y / getSlopeAt(new Point(x, y)));
-
-			while (newX != x) {
-				x = newX;
-				y = getYvalues(x).getPositiveRoot();
-				newX = x - (y / getSlopeAt(new Point(x, y)));
-			}
-
-		} catch (IllegalArgumentException ex) {
-			return x;
+		if (Math.abs(yVal.getNegativeRoot() - point.getY()) <= 0.000001) {
+			return new Point(point.getX(), yVal.getPositiveRoot());
+		} else {
+			return new Point(point.getX(), yVal.getNegativeRoot());
 		}
-
-		return x;
 	}
 
 	private static final BigDecimal SQRT_DIG = new BigDecimal(150);

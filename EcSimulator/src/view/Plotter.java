@@ -23,13 +23,13 @@ public class Plotter {
 
 	private EllipticCurve curve;
 	private List<double[][]> pointSets;
-	
+
 	private JFrame frame;
 	private Plot2DPanel plot;
 	private double xMin;
 	private double xMax;
 	private double steps;
-	
+
 	private int plotCounter = 0;
 
 	public Plotter(EllipticCurve curve, double xMin, double xMax, double steps) {
@@ -42,12 +42,13 @@ public class Plotter {
 
 		plotEllipticCurve();
 	}
-	
+
 	public double getXmax() {
 		return xMax;
 	}
-	
-	private double[][] listsToArray(ArrayList<Double> curXvals, ArrayList<Double> curYvals) {
+
+	private double[][] listsToArray(ArrayList<Double> curXvals,
+			ArrayList<Double> curYvals) {
 		if (curXvals.size() > 0) {
 			double[][] currPointSet = new double[curXvals.size()][2];
 
@@ -55,22 +56,42 @@ public class Plotter {
 				currPointSet[j][0] = curXvals.get(j);
 				currPointSet[j][1] = curYvals.get(j);
 			}
-			
+
 			return currPointSet;
 		}
-		
+
 		return null;
 	}
-	
+
+	public ArrayList<Double> arrayToXvals(double[][] array) {
+		ArrayList<Double> retVal = new ArrayList<Double>();
+
+		for (int i = 0; i < array.length; ++i) {
+			retVal.add(array[i][0]);
+		}
+
+		return retVal;
+	}
+
+	public ArrayList<Double> arrayToYvals(double[][] array) {
+		ArrayList<Double> retVal = new ArrayList<Double>();
+
+		for (int i = 0; i < array.length; ++i) {
+			retVal.add(array[i][1]);
+		}
+
+		return retVal;
+	}
+
 	public void replot(double xMax) {
 		this.xMax = xMax;
-		
+
 		plot.removeAllPlots();
-		plotEllipticCurve();		
+		plotEllipticCurve();
 	}
 
 	private void plotEllipticCurve() {
-		
+
 		pointSets = new LinkedList<double[][]>();
 		double zeroX;
 
@@ -86,29 +107,37 @@ public class Plotter {
 
 			} catch (IllegalArgumentException ex) {
 				if (curXvals.size() > 0) {
-					zeroX = curve.getZeroX(curXvals.get(0));
-					curXvals.add(0, zeroX);
-					curYvals.add(0, 0d);					
-					
-					zeroX = curve.getZeroX(curXvals.get(curXvals.size() - 1));
-					curXvals.add(zeroX);
-					curYvals.add(0d);	
-					
-					
+
+					double lastGoodX = getLastGoodXtoTheLeft(curXvals.get(0));
+					EllipticCurveYvalue lastGoodYvalues = curve
+							.getYvalues(lastGoodX);
+
+					curXvals.add(0, lastGoodX);
+					curYvals.add(0, lastGoodYvalues.getPositiveRoot());
+
+					lastGoodX = getLastGoodXtoTheRight(curXvals.get(curXvals
+							.size() - 1));
+					lastGoodYvalues = curve.getYvalues(lastGoodX);
+
+					curXvals.add(lastGoodX);
+					curYvals.add(lastGoodYvalues.getPositiveRoot());
+
 					pointSets.add(listsToArray(curXvals, curYvals));
-					
+
 					curXvals = new ArrayList<Double>();
 					curYvals = new ArrayList<Double>();
 				}
 			}
 		}
 
-		zeroX = curve.getZeroX(curXvals.get(0));
-		curXvals.add(0, zeroX);
-		curYvals.add(0, 0d);
-		
+		double lastGoodX = getLastGoodXtoTheLeft(curXvals.get(0));
+		EllipticCurveYvalue lastGoodYvalues = curve.getYvalues(lastGoodX);
+
+		curXvals.add(0, lastGoodX);
+		curYvals.add(0, lastGoodYvalues.getPositiveRoot());
+
 		pointSets.add(listsToArray(curXvals, curYvals));
-		
+
 		curXvals = new ArrayList<Double>();
 		curYvals = new ArrayList<Double>();
 
@@ -120,23 +149,67 @@ public class Plotter {
 				curYvals.add(tempVal.getNegativeRoot());
 
 			} catch (IllegalArgumentException ex) {
-				if (curXvals.size() > 0) {	
-					
-					zeroX = curve.getZeroX(curXvals.get(curXvals.size() - 1));
-					curXvals.add(zeroX);
-					curYvals.add(0d);						
-					
+				if (curXvals.size() > 0) {
+
+					if (curXvals.get(0) < xMax) {
+						lastGoodX = getLastGoodXtoTheRight(curXvals.get(0));
+						lastGoodYvalues = curve.getYvalues(lastGoodX);
+
+						curXvals.add(0, lastGoodX);
+						curYvals.add(0, lastGoodYvalues.getPositiveRoot());
+					}
+
+					lastGoodX = getLastGoodXtoTheLeft(i);
+					lastGoodYvalues = curve.getYvalues(lastGoodX);
+
+					curXvals.add(lastGoodX);
+					curYvals.add(lastGoodYvalues.getNegativeRoot());
+
 					pointSets.add(listsToArray(curXvals, curYvals));
-					
+
 					curXvals = new ArrayList<Double>();
 					curYvals = new ArrayList<Double>();
 				}
 			}
 		}
-		
-		for(int i = 0; i < pointSets.size(); ++i) {
+
+		for (int i = 0; i < pointSets.size(); ++i) {
 			plot.addLinePlot(curve.toString(), Color.GRAY, pointSets.get(i));
 		}
+	}
+
+	private double getLastGoodXtoTheLeft(double lastGoodX) {
+		// go forth baby steps and if it crashes => take last good value
+		double j = lastGoodX + steps;
+		double littleSteps = 0.00000001;
+		EllipticCurveYvalue littleTempVal;
+		while (true) {
+			j -= littleSteps;
+			try {
+				littleTempVal = curve.getYvalues(j);
+			} catch (IllegalArgumentException littleEx) {
+				break;
+			}
+		}
+		j += littleSteps;
+		return j;
+	}
+
+	private double getLastGoodXtoTheRight(double lastGoodX) {
+		// go forth baby steps and if it crashes => take last good value
+		double j = lastGoodX - steps;
+		double littleSteps = 0.00000001;
+		EllipticCurveYvalue littleTempVal;
+		while (true) {
+			j += littleSteps;
+			try {
+				littleTempVal = curve.getYvalues(j);
+			} catch (IllegalArgumentException littleEx) {
+				break;
+			}
+		}
+		j -= littleSteps;
+		return j;
 	}
 
 	private void initPlot() {
@@ -224,7 +297,7 @@ public class Plotter {
 		double[] x = { p.getX() };
 		double[] y = { p.getY() };
 
-		plot.addScatterPlot(name, color, x, y);
+		plot.addScatterPlot(name + " (" + x[0] + "," + y[0] + ")", color, x, y);
 		plotCounter++;
 	}
 }

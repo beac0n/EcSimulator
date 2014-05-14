@@ -5,24 +5,31 @@ public class Point {
 	private double x;
 	private double y;
 	private boolean infiniteP;
-	
-	
+
 	public Point() {
-		infiniteP = true;		
+		infiniteP = true;
 	}
+
 	public Point(double x, double y) {
 		this.x = x;
 		this.y = y;
 	}
 
 	public double getX() {
-		if(infiniteP) throw new IllegalArgumentException();
+		if (infiniteP)
+			throw new IllegalArgumentException();
 		return x;
 	}
 
 	public double getY() {
-		if(infiniteP) throw new IllegalArgumentException();
+		if (infiniteP)
+			throw new IllegalArgumentException();
 		return y;
+	}
+
+	public String toString() {
+		if(infiniteP) return "Point at infinity";
+		return "(" + x + "," + y + ")";
 	}
 
 	public boolean equals(Object obj) {
@@ -31,6 +38,7 @@ public class Point {
 		Point o = (Point) obj;
 		if (o.getX() == this.getX() && o.getY() == this.getY())
 			return true;
-		else return false;
+		else
+			return false;
 	}
 }
